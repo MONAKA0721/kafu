@@ -2,12 +2,25 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
+var revision = "undefined"
+
 func main() {
+
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("Panic '%v' captured\n", err)
+		}
+	}()
+
+	fmt.Printf("Version is %s\n", revision)
+
 	// Aura requires you to use "neo4j+s" protocol
 	// (You need to replace your connection details, username and password)
 	uri := os.Getenv("NEO4J_URI")
@@ -87,6 +100,19 @@ func main() {
 		return nil, result.Err()
 	})
 	if err != nil {
+		panic(err)
+	}
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		_, err := io.WriteString(w, "pong")
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	if err := http.ListenAndServe(":8080", mux); err != nil {
 		panic(err)
 	}
 }
